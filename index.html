@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RISC-V Instruction Set Search & Decoder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .mnemonic-tag {
+        font-family: "Menlo", "Monaco", "Courier New", monospace;
+      }
+      .transition-all {
+        transition: all 0.3s ease-in-out;
+      }
+      .instruction-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8">
+      <header class="text-center mb-10">
+        <a href="https://github.com/wipeseals/riscv-inst-viewer">
+          <h1 class="text-3xl md:text-5xl font-bold text-gray-900">
+            RISC-V Instruction Set Search & Decoder
+          </h1>
+        </a>
+        <p class="mt-3 text-lg text-gray-600">
+          Search & Decode RV32 (I, M, A, Zifencei, Zicsr) Instructions
+        </p>
+      </header>
+
+      <!-- Decoder Section -->
+      <section
+        id="decoder"
+        class="mb-12 bg-white p-6 rounded-2xl shadow-md border border-gray-200"
+      >
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">
+          32-bit Instruction Decoder
+        </h2>
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+          <input
+            type="text"
+            id="decoderInput"
+            placeholder="e.g., 0x30529073 (csrrw x0, mcycle, x5)"
+            class="flex-grow w-full bg-gray-50 border border-gray-300 rounded-lg py-3 px-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition mnemonic-tag"
+          />
+          <button
+            id="decodeButton"
+            class="w-full sm:w-auto bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            Decode
+          </button>
+        </div>
+        <div
+          id="decoderOutput"
+          class="mt-5 p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[80px]"
+        >
+          <p class="text-gray-500">Decoder output will be shown here.</p>
+        </div>
+      </section>
+
+      <!-- Search and Filter Section -->
+      <section
+        id="reference"
+        class="bg-white p-6 rounded-2xl shadow-md border border-gray-200"
+      >
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">
+          Instruction Set Reference
+        </h2>
+        <div class="mb-6 max-w-2xl mx-auto">
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <svg
+                class="h-5 w-5 text-gray-400"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search by mnemonic, function, opcode..."
+              class="w-full bg-white border border-gray-300 rounded-full py-3 pl-10 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+            />
+          </div>
+        </div>
+
+        <!-- Instruction List -->
+        <main
+          id="instructionList"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <!-- Instruction cards will be dynamically inserted here -->
+        </main>
+
+        <!-- Not Found Message -->
+        <div id="notFoundMessage" class="text-center py-12 hidden">
+          <h3 class="text-xl font-semibold text-gray-600">
+            No Instructions Found
+          </h3>
+          <p class="text-gray-500 mt-2">Please try different search terms.</p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // --- RISC-V RV32IM/A/Zifencei/Zicsr Instruction Set Data ---
+      const instructions = [
+        // RV32I Base Instruction Set
+        {
+          mnemonic: "LUI",
+          format: "U",
+          type: "I",
+          opcode: "0110111",
+          description: "Load Upper Immediate: rd = imm << 12",
+        },
+        {
+          mnemonic: "AUIPC",
+          format: "U",
+          type: "I",
+          opcode: "0010111",
+          description: "Add Upper Immediate to PC: rd = pc + (imm << 12)",
+        },
+        {
+          mnemonic: "JAL",
+          format: "J",
+          type: "I",
+          opcode: "1101111",
+          description: "Jump and Link: rd = pc + 4; pc += offset",
+        },
+        {
+          mnemonic: "JALR",
+          format: "I",
+          type: "I",
+          opcode: "1100111",
+          funct3: "000",
+          description: "Jump and Link Register: rd = pc + 4; pc = rs1 + offset",
+        },
+        {
+          mnemonic: "BEQ",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "000",
+          description: "Branch on Equal: if (rs1 == rs2) branch",
+        },
+        {
+          mnemonic: "BNE",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "001",
+          description: "Branch on Not Equal: if (rs1 != rs2) branch",
+        },
+        {
+          mnemonic: "BLT",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "100",
+          description: "Branch on Less Than (signed): if (rs1 < rs2) branch",
+        },
+        {
+          mnemonic: "BGE",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "101",
+          description:
+            "Branch on Greater or Equal (signed): if (rs1 >= rs2) branch",
+        },
+        {
+          mnemonic: "BLTU",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "110",
+          description: "Branch on Less Than (unsigned): if (rs1 < rs2) branch",
+        },
+        {
+          mnemonic: "BGEU",
+          format: "B",
+          type: "I",
+          opcode: "1100011",
+          funct3: "111",
+          description:
+            "Branch on Greater or Equal (unsigned): if (rs1 >= rs2) branch",
+        },
+        {
+          mnemonic: "LB",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "000",
+          description: "Load Byte (signed): rd = SignExtend(mem[rs1+offset])",
+        },
+        {
+          mnemonic: "LH",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "001",
+          description:
+            "Load Halfword (signed): rd = SignExtend(mem[rs1+offset])",
+        },
+        {
+          mnemonic: "LW",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "010",
+          description: "Load Word: rd = mem[rs1+offset]",
+        },
+        {
+          mnemonic: "LBU",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "100",
+          description: "Load Byte (unsigned): rd = ZeroExtend(mem[rs1+offset])",
+        },
+        {
+          mnemonic: "LHU",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "101",
+          description:
+            "Load Halfword (unsigned): rd = ZeroExtend(mem[rs1+offset])",
+        },
+        {
+          mnemonic: "SB",
+          format: "S",
+          type: "I",
+          opcode: "0100011",
+          funct3: "000",
+          description: "Store Byte: mem[rs1+offset] = rs2",
+        },
+        {
+          mnemonic: "SH",
+          format: "S",
+          type: "I",
+          opcode: "0100011",
+          funct3: "001",
+          description: "Store Halfword: mem[rs1+offset] = rs2",
+        },
+        {
+          mnemonic: "SW",
+          format: "S",
+          type: "I",
+          opcode: "0100011",
+          funct3: "010",
+          description: "Store Word: mem[rs1+offset] = rs2",
+        },
+        {
+          mnemonic: "ADDI",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "000",
+          description: "Add Immediate: rd = rs1 + imm",
+        },
+        {
+          mnemonic: "SLTI",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "010",
+          description:
+            "Set Less Than Immediate (signed): rd = (rs1 < imm) ? 1 : 0",
+        },
+        {
+          mnemonic: "SLTIU",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "011",
+          description:
+            "Set Less Than Immediate (unsigned): rd = (rs1 < imm) ? 1 : 0",
+        },
+        {
+          mnemonic: "XORI",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "100",
+          description: "XOR Immediate: rd = rs1 ^ imm",
+        },
+        {
+          mnemonic: "ORI",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "110",
+          description: "OR Immediate: rd = rs1 | imm",
+        },
+        {
+          mnemonic: "ANDI",
+          format: "I",
+          type: "I",
+          opcode: "0010011",
+          funct3: "111",
+          description: "AND Immediate: rd = rs1 & imm",
+        },
+        {
+          mnemonic: "SLLI",
+          format: "R",
+          type: "I",
+          opcode: "0010011",
+          funct3: "001",
+          funct7: "0000000",
+          description: "Shift Left Logical Immediate: rd = rs1 << shamt",
+        },
+        {
+          mnemonic: "SRLI",
+          format: "R",
+          type: "I",
+          opcode: "0010011",
+          funct3: "101",
+          funct7: "0000000",
+          description: "Shift Right Logical Immediate: rd = rs1 >> shamt",
+        },
+        {
+          mnemonic: "SRAI",
+          format: "R",
+          type: "I",
+          opcode: "0010011",
+          funct3: "101",
+          funct7: "0100000",
+          description: "Shift Right Arithmetic Immediate: rd = rs1 >> shamt",
+        },
+        {
+          mnemonic: "ADD",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "000",
+          funct7: "0000000",
+          description: "Add: rd = rs1 + rs2",
+        },
+        {
+          mnemonic: "SUB",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "000",
+          funct7: "0100000",
+          description: "Subtract: rd = rs1 - rs2",
+        },
+        {
+          mnemonic: "SLL",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "001",
+          funct7: "0000000",
+          description: "Shift Left Logical: rd = rs1 << rs2",
+        },
+        {
+          mnemonic: "SLT",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "010",
+          funct7: "0000000",
+          description: "Set Less Than (signed): rd = (rs1 < rs2) ? 1 : 0",
+        },
+        {
+          mnemonic: "SLTU",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "011",
+          funct7: "0000000",
+          description: "Set Less Than (unsigned): rd = (rs1 < rs2) ? 1 : 0",
+        },
+        {
+          mnemonic: "XOR",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "100",
+          funct7: "0000000",
+          description: "XOR: rd = rs1 ^ rs2",
+        },
+        {
+          mnemonic: "SRL",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "101",
+          funct7: "0000000",
+          description: "Shift Right Logical: rd = rs1 >> rs2",
+        },
+        {
+          mnemonic: "SRA",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "101",
+          funct7: "0100000",
+          description: "Shift Right Arithmetic: rd = rs1 >> rs2",
+        },
+        {
+          mnemonic: "OR",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "110",
+          funct7: "0000000",
+          description: "OR: rd = rs1 | rs2",
+        },
+        {
+          mnemonic: "AND",
+          format: "R",
+          type: "I",
+          opcode: "0110011",
+          funct3: "111",
+          funct7: "0000000",
+          description: "AND: rd = rs1 & rs2",
+        },
+        {
+          mnemonic: "FENCE",
+          format: "I",
+          type: "I",
+          opcode: "0001111",
+          funct3: "000",
+          description: "Memory ordering fence",
+        },
+        {
+          mnemonic: "ECALL",
+          format: "I",
+          type: "I",
+          opcode: "1110011",
+          funct3: "000",
+          special: "imm=0",
+          description: "Environment call",
+        },
+        {
+          mnemonic: "EBREAK",
+          format: "I",
+          type: "I",
+          opcode: "1110011",
+          funct3: "000",
+          special: "imm=1",
+          description: "Environment breakpoint",
+        },
+        // Zifencei Standard Extension
+        {
+          mnemonic: "FENCE.I",
+          format: "I",
+          type: "Zifencei",
+          opcode: "0001111",
+          funct3: "001",
+          description: "Instruction stream fetch fence",
+        },
+        // Zicsr Standard Extension
+        {
+          mnemonic: "CSRRW",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "001",
+          description: "Atomic Read/Write CSR: t=csr; csr=rs1; rd=t",
+        },
+        {
+          mnemonic: "CSRRS",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "010",
+          description: "Atomic Read & Set CSR: t=csr; csr=csr|rs1; rd=t",
+        },
+        {
+          mnemonic: "CSRRC",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "011",
+          description: "Atomic Read & Clear CSR: t=csr; csr=csr&~rs1; rd=t",
+        },
+        {
+          mnemonic: "CSRRWI",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "101",
+          description: "Atomic Read/Write Immediate CSR: rd=csr; csr=zimm",
+        },
+        {
+          mnemonic: "CSRRSI",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "110",
+          description:
+            "Atomic Read & Set Immediate CSR: t=csr; csr=csr|zimm; rd=t",
+        },
+        {
+          mnemonic: "CSRRCI",
+          format: "I",
+          type: "Zicsr",
+          opcode: "1110011",
+          funct3: "111",
+          description:
+            "Atomic Read & Clear Immediate CSR: t=csr; csr=csr&~zimm; rd=t",
+        },
+        // RV32M Standard Extension
+        {
+          mnemonic: "MUL",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "000",
+          funct7: "0000001",
+          description: "Multiply: rd = rs1 * rs2 (lower 32 bits)",
+        },
+        {
+          mnemonic: "MULH",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "001",
+          funct7: "0000001",
+          description: "Multiply High (signed): rd = (rs1*rs2)>>32",
+        },
+        {
+          mnemonic: "MULHSU",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "010",
+          funct7: "0000001",
+          description: "Multiply High (signed*unsigned): rd = (rs1*rs2)>>32",
+        },
+        {
+          mnemonic: "MULHU",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "011",
+          funct7: "0000001",
+          description: "Multiply High (unsigned): rd = (rs1*rs2)>>32",
+        },
+        {
+          mnemonic: "DIV",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "100",
+          funct7: "0000001",
+          description: "Divide (signed): rd = rs1 / rs2",
+        },
+        {
+          mnemonic: "DIVU",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "101",
+          funct7: "0000001",
+          description: "Divide (unsigned): rd = rs1 / rs2",
+        },
+        {
+          mnemonic: "REM",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "110",
+          funct7: "0000001",
+          description: "Remainder (signed): rd = rs1 % rs2",
+        },
+        {
+          mnemonic: "REMU",
+          format: "R",
+          type: "M",
+          opcode: "0110011",
+          funct3: "111",
+          funct7: "0000001",
+          description: "Remainder (unsigned): rd = rs1 % rs2",
+        },
+        // RV32A Standard Extension
+        {
+          mnemonic: "LR.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0001000",
+          description: "Load-Reserved: rd = mem[rs1]; register reservation",
+        },
+        {
+          mnemonic: "SC.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0001100",
+          description:
+            "Store-Conditional: if valid, mem[rs1]=rs2, rd=0; else rd=1",
+        },
+        {
+          mnemonic: "AMOSWAP.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0000100",
+          description: "Atomic Swap: rd=mem[rs1]; mem[rs1]=rs2",
+        },
+        {
+          mnemonic: "AMOADD.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0000000",
+          description: "Atomic Add: rd=mem[rs1]; mem[rs1]+=rs2",
+        },
+        {
+          mnemonic: "AMOXOR.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0010000",
+          description: "Atomic XOR: rd=mem[rs1]; mem[rs1]^=rs2",
+        },
+        {
+          mnemonic: "AMOAND.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0110000",
+          description: "Atomic AND: rd=mem[rs1]; mem[rs1]&=rs2",
+        },
+        {
+          mnemonic: "AMOOR.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "0100000",
+          description: "Atomic OR: rd=mem[rs1]; mem[rs1]|=rs2",
+        },
+        {
+          mnemonic: "AMOMIN.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "1000000",
+          description:
+            "Atomic Min (signed): rd=mem[rs1]; mem[rs1]=min(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMAX.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "1010000",
+          description:
+            "Atomic Max (signed): rd=mem[rs1]; mem[rs1]=max(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMINU.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "1100000",
+          description:
+            "Atomic Min (unsigned): rd=mem[rs1]; mem[rs1]=minu(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMAXU.W",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "010",
+          funct7: "1110000",
+          description:
+            "Atomic Max (unsigned): rd=mem[rs1]; mem[rs1]=maxu(mem[rs1],rs2)",
+        },
+      ];
+
+      // --- DOM Elements ---
+      const instructionList = document.getElementById("instructionList");
+      const searchInput = document.getElementById("searchInput");
+      const notFoundMessage = document.getElementById("notFoundMessage");
+      const decoderInput = document.getElementById("decoderInput");
+      const decodeButton = document.getElementById("decodeButton");
+      const decoderOutput = document.getElementById("decoderOutput");
+
+      // --- Instruction Format Visualizations ---
+      const formatLayouts = {
+        R: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-2 bg-red-100 p-1 border-r">funct7</div><div class="col-span-1 bg-green-100 p-1 border-r">rs2</div><div class="col-span-1 bg-blue-100 p-1 border-r">rs1</div><div class="col-span-1 bg-yellow-100 p-1 border-r">funct3</div><div class="col-span-1 bg-purple-100 p-1 border-r">rd</div><div class="col-span-2 bg-gray-200 p-1">opcode</div></div>`,
+        I: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-3 bg-orange-100 p-1 border-r">imm[11:0]</div><div class="col-span-1 bg-blue-100 p-1 border-r">rs1</div><div class="col-span-1 bg-yellow-100 p-1 border-r">funct3</div><div class="col-span-1 bg-purple-100 p-1 border-r">rd</div><div class="col-span-2 bg-gray-200 p-1">opcode</div></div>`,
+        S: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-2 bg-orange-100 p-1 border-r">imm[11:5]</div><div class="col-span-1 bg-green-100 p-1 border-r">rs2</div><div class="col-span-1 bg-blue-100 p-1 border-r">rs1</div><div class="col-span-1 bg-yellow-100 p-1 border-r">funct3</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[4:0]</div><div class="col-span-2 bg-gray-200 p-1">opcode</div></div>`,
+        B: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-1 bg-orange-100 p-1 border-r">imm[12]</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[10:5]</div><div class="col-span-1 bg-green-100 p-1 border-r">rs2</div><div class="col-span-1 bg-blue-100 p-1 border-r">rs1</div><div class="col-span-1 bg-yellow-100 p-1 border-r">funct3</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[4:1]</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[11]</div><div class="col-span-1 bg-gray-200 p-1">op</div></div>`,
+        U: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-5 bg-orange-100 p-1 border-r">imm[31:12]</div><div class="col-span-1 bg-purple-100 p-1 border-r">rd</div><div class="col-span-2 bg-gray-200 p-1">opcode</div></div>`,
+        J: `<div class="grid grid-cols-8 text-center text-xs border border-gray-300 rounded"><div class="col-span-1 bg-orange-100 p-1 border-r">imm[20]</div><div class="col-span-2 bg-orange-100 p-1 border-r">imm[10:1]</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[11]</div><div class="col-span-1 bg-orange-100 p-1 border-r">imm[19:12]</div><div class="col-span-1 bg-purple-100 p-1 border-r">rd</div><div class="col-span-2 bg-gray-200 p-1">opcode</div></div>`,
+      };
+
+      const typeColors = {
+        I: "indigo",
+        M: "green",
+        A: "blue",
+        Zifencei: "orange",
+        Zicsr: "cyan",
+      };
+
+      const renderInstructions = (filter = "") => {
+        instructionList.innerHTML = "";
+        const lowerCaseFilter = filter.toLowerCase();
+
+        const filteredInstructions = instructions.filter(
+          (inst) =>
+            inst.mnemonic.toLowerCase().includes(lowerCaseFilter) ||
+            inst.description.toLowerCase().includes(lowerCaseFilter) ||
+            inst.opcode.includes(lowerCaseFilter) ||
+            inst.type.toLowerCase().includes(lowerCaseFilter) ||
+            (inst.funct3 && inst.funct3.includes(lowerCaseFilter)) ||
+            (inst.funct7 && inst.funct7.includes(lowerCaseFilter))
+        );
+
+        notFoundMessage.classList.toggle(
+          "hidden",
+          filteredInstructions.length > 0
+        );
+
+        filteredInstructions.forEach((inst) => {
+          const card = document.createElement("div");
+          card.className =
+            "instruction-card bg-white rounded-xl border border-gray-200 p-6 shadow-sm transition-all";
+          const color = typeColors[inst.type] || "gray";
+
+          card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-xl font-bold text-gray-900">${inst.mnemonic.toUpperCase()}</h3>
+                        <span class="mnemonic-tag bg-${color}-100 text-${color}-800 text-sm font-semibold px-3 py-1 rounded-full">${
+            inst.format
+          }-Type (${inst.type})</span>
+                    </div>
+                    <p class="mt-3 text-gray-600">${inst.description}</p>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-2">Encoding:</h4>
+                        <div class="text-xs space-y-2 mnemonic-tag">
+                            <p><strong>Opcode:</strong> ${inst.opcode}</p>
+                            ${
+                              inst.funct3
+                                ? `<p><strong>Funct3:</strong> ${inst.funct3}</p>`
+                                : ""
+                            }
+                            ${
+                              inst.funct7
+                                ? `<p><strong>Funct7:</strong> ${inst.funct7}</p>`
+                                : ""
+                            }
+                             ${
+                               inst.special
+                                 ? `<p><strong>Special:</strong> ${inst.special}</p>`
+                                 : ""
+                             }
+                        </div>
+                        <div class="mt-3">${
+                          formatLayouts[inst.format] || ""
+                        }</div>
+                    </div>
+                `;
+          instructionList.appendChild(card);
+        });
+      };
+
+      const getBits = (val, start, end) =>
+        (val >>> start) & ((1 << (end - start + 1)) - 1);
+      const signExtend = (val, bits) => {
+        const shift = 32 - bits;
+        return (val << shift) >> shift;
+      };
+
+      const decodeInstruction = () => {
+        const input = decoderInput.value.trim();
+        if (!input) {
+          decoderOutput.innerHTML = `<p class="text-gray-500">Please enter a 32-bit hexadecimal code.</p>`;
+          return;
+        }
+        let value;
+        try {
+          value = BigInt(input);
+          if (value < 0 || value > 0xffffffffn)
+            throw new Error("Out of 32-bit range");
+        } catch (e) {
+          decoderOutput.innerHTML = `<p class="text-red-500 font-bold">Error:</p><p class="text-red-600">Invalid 32-bit hexadecimal value. Please use '0x' prefix.</p>`;
+          return;
+        }
+        const instVal = Number(value);
+
+        const opcode = getBits(instVal, 0, 6).toString(2).padStart(7, "0");
+        const rd = getBits(instVal, 7, 11);
+        const funct3 = getBits(instVal, 12, 14).toString(2).padStart(3, "0");
+        const rs1 = getBits(instVal, 15, 19);
+        const rs2 = getBits(instVal, 20, 24);
+        const funct7 = getBits(instVal, 25, 31).toString(2).padStart(7, "0");
+        const imm12 = getBits(instVal, 20, 31);
+
+        let foundInst = instructions.find((i) => {
+          if (i.opcode !== opcode) return false;
+          if (i.funct3 && i.funct3 !== funct3) return false;
+
+          if (i.mnemonic.startsWith("AMO")) {
+            const amo_funct7 = getBits(instVal, 25, 31)
+              .toString(2)
+              .padStart(7, "0");
+            return i.funct7 === amo_funct7;
+          }
+          if (i.funct7 && !["SLLI", "SRLI", "SRAI"].includes(i.mnemonic)) {
+            if (i.funct7 !== funct7) return false;
+          }
+
+          if (["SLLI", "SRLI", "SRAI"].includes(i.mnemonic)) {
+            const shamt_funct7 = getBits(instVal, 25, 31)
+              .toString(2)
+              .padStart(7, "0");
+            if (i.funct7 !== shamt_funct7) return false;
+          }
+          if (i.special) {
+            if (i.special === "imm=0" && imm12 !== 0) return false;
+            if (i.special === "imm=1" && imm12 !== 1) return false;
+          }
+          return true;
+        });
+
+        if (!foundInst) {
+          decoderOutput.innerHTML = `<p class="text-red-500 font-bold">Unknown Instruction:</p><p class="text-red-600">Could not find a matching instruction for the provided code.</p>`;
+          return;
+        }
+
+        let assembly = foundInst.mnemonic.toUpperCase();
+        let imm = 0;
+        const rd_str = `x${rd}`;
+        const rs1_str = `x${rs1}`;
+        const rs2_str = `x${rs2}`;
+
+        switch (foundInst.format) {
+          case "R":
+            if (["SLLI", "SRLI", "SRAI"].includes(foundInst.mnemonic)) {
+              const shamt = getBits(instVal, 20, 24);
+              assembly += ` ${rd_str}, ${rs1_str}, ${shamt}`;
+            } else {
+              assembly += ` ${rd_str}, ${rs1_str}, ${rs2_str}`;
+            }
+            break;
+          case "I":
+            imm = signExtend(imm12, 12);
+            if (foundInst.type === "Zicsr") {
+              const csr = imm12;
+              if (funct3[0] === "1") {
+                // Immediate variants
+                const uimm = rs1;
+                assembly += ` ${rd_str}, 0x${csr.toString(16)}, ${uimm}`;
+              } else {
+                assembly += ` ${rd_str}, 0x${csr.toString(16)}, ${rs1_str}`;
+              }
+            } else if (foundInst.mnemonic === "JALR") {
+              assembly += ` ${rd_str}, ${imm}(${rs1_str})`;
+            } else if (foundInst.mnemonic === "FENCE.I") {
+              assembly = `FENCE.I`;
+            } else if (["ECALL", "EBREAK"].includes(foundInst.mnemonic)) {
+              // No operands
+            } else {
+              assembly += ` ${rd_str}, ${rs1_str}, ${imm}`;
+            }
+            break;
+          case "S":
+            const imm1 = getBits(instVal, 7, 11);
+            const imm2 = getBits(instVal, 25, 31);
+            imm = signExtend((imm2 << 5) | imm1, 12);
+            assembly += ` ${rs2_str}, ${imm}(${rs1_str})`;
+            break;
+          case "B":
+            const b_imm = signExtend(
+              (getBits(instVal, 31, 31) << 12) |
+                (getBits(instVal, 7, 7) << 11) |
+                (getBits(instVal, 25, 30) << 5) |
+                (getBits(instVal, 8, 11) << 1),
+              13
+            );
+            imm = b_imm;
+            assembly += ` ${rs1_str}, ${rs2_str}, ${imm}`;
+            break;
+          case "U":
+            imm = instVal & 0xfffff000;
+            assembly += ` ${rd_str}, ${imm >>> 12}`;
+            break;
+          case "J":
+            const j_imm = signExtend(
+              (getBits(instVal, 31, 31) << 20) |
+                (getBits(instVal, 12, 19) << 12) |
+                (getBits(instVal, 20, 20) << 11) |
+                (getBits(instVal, 21, 30) << 1),
+              21
+            );
+            imm = j_imm;
+            assembly += ` ${rd_str}, ${imm}`;
+            break;
+        }
+
+        decoderOutput.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="font-bold text-lg text-${
+                          typeColors[foundInst.type]
+                        }-700 mnemonic-tag">${assembly}</p>
+                        <p class="text-sm text-gray-600"><strong>Instruction:</strong> ${foundInst.mnemonic.toUpperCase()} (${
+          foundInst.description
+        })</p>
+                        <p class="text-sm text-gray-600"><strong>Format:</strong> ${
+                          foundInst.format
+                        }-Type (${foundInst.type})</p>
+                    </div>
+                    <div class="text-xs mnemonic-tag bg-white p-3 rounded border">
+                        <p><strong>Opcode:</strong> <span class="text-gray-500">${opcode}</span></p>
+                        <p><strong>rd:</strong> <span class="text-purple-600">${rd_str}</span> (val: ${rd})</p>
+                        <p><strong>funct3:</strong> <span class="text-yellow-600">${funct3}</span></p>
+                        <p><strong>rs1:</strong> <span class="text-blue-600">${rs1_str}</span> (val: ${rs1})</p>
+                        <p><strong>rs2:</strong> <span class="text-green-600">${rs2_str}</span> (val: ${rs2})</p>
+                        <p><strong>funct7:</strong> <span class="text-red-600">${funct7}</span></p>
+                        ${
+                          ["S", "B", "I", "U", "J"].includes(
+                            foundInst.format
+                          ) &&
+                          !["ECALL", "EBREAK", "FENCE.I"].includes(
+                            foundInst.mnemonic
+                          )
+                            ? `<p><strong>Immediate:</strong> <span class="text-orange-600">${imm}</span> (0x${imm.toString(
+                                16
+                              )})</p>`
+                            : ""
+                        }
+                    </div>
+                </div>
+            `;
+      };
+
+      // --- Event Listeners ---
+      searchInput.addEventListener("input", (e) =>
+        renderInstructions(e.target.value)
+      );
+      decodeButton.addEventListener("click", decodeInstruction);
+      decoderInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          decodeInstruction();
+        }
+      });
+
+      // --- Initial Render ---
+      window.onload = () => {
+        renderInstructions();
+      };
+    </script>
+  </body>
+</html>
