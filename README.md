@@ -2,59 +2,59 @@
 
 [![Deploy static content to Pages](https://github.com/wipeseals/riscv-inst-viewer/actions/workflows/static.yml/badge.svg?branch=master)](https://github.com/wipeseals/riscv-inst-viewer/actions/workflows/static.yml)
 
-RISC-V の開発・デバッグを支援する命令セット可視化・解析ツールです。RISC-V 命令の一覧表示と、数値からの命令デコード機能を提供し、プロセッサ開発やアセンブリプログラミングの効率化を図ります。
+A RISC-V instruction set visualization and analysis tool to support RISC-V development and debugging. Provides instruction listing and numerical decoding functionality to streamline processor development and assembly programming workflows.
 
-🚀 **デモサイト**: <https://wipeseals.github.io/riscv-inst-viewer/>
+🚀 **Demo Site**: <https://wipeseals.github.io/riscv-inst-viewer/>
 
-## 特徴
+## Features
 
-- **命令一覧表示**: RISC-V の各種拡張命令セット（RV32I/RV64I、M、A、F、D、C、Zicsr等）の詳細な一覧表示
-- **命令デコード**: 32ビット数値から対応するRISC-V命令を逆引き・デコードする機能
-- **アーキテクチャ対応**: RV32とRV64の両アーキテクチャに対応
-- **フォーマット可視化**: 各命令のエンコーディングフォーマット（R型、I型、S型等）をビジュアル表示
-- **スタンドアロン**: 単一HTMLファイルでの実行が可能で、外部依存関係なし
-- **レスポンシブ対応**: デスクトップ・モバイルの両環境で利用可能
-- **ダークモード**: ライト・ダークテーマの切り替え対応
+- **Instruction Listing**: Comprehensive display of RISC-V extension instruction sets (RV32I/RV64I, M, A, F, D, C, Zicsr, etc.)
+- **Instruction Decoding**: Reverse lookup and decoding of RISC-V instructions from 32-bit numerical values
+- **Architecture Support**: Compatible with both RV32 and RV64 architectures
+- **Format Visualization**: Visual display of instruction encoding formats (R-type, I-type, S-type, etc.)
+- **Standalone Operation**: Executable as a single HTML file with no external dependencies
+- **Responsive Design**: Compatible with both desktop and mobile environments
+- **Dark Mode**: Light/dark theme switching support
 
-## 使用方法
+## Usage
 
-1. `index.html` をブラウザで開く
-2. 「Search Instructions」セクションで命令名を検索、または「32-bit Instruction Decoder」で16進数値を入力
-3. 命令の詳細情報とエンコーディングを確認
+1. Open `index.html` in a web browser
+2. Search for instruction names in the "Search Instructions" section, or enter hexadecimal values in the "32-bit Instruction Decoder"
+3. View detailed instruction information and encoding
 
-## RISC-V 仕様書・設計情報
+## RISC-V Specifications & Design Resources
 
-- [RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/) - 公式仕様書
-- [RISC-V International](https://riscv.org/) - RISC-V 国際団体
-- [RISC-V Assembly Programmer's Manual](https://github.com/riscv-non-isa/riscv-asm-manual) - アセンブリプログラミングマニュアル
-- [RISC-V Green Card](https://www.cl.cam.ac.uk/teaching/1617/ECAD+Arch/files/docs/RISCVGreenCardv8-20151013.pdf) - 命令セット一覧
-- [RISC-V Opcodes](https://github.com/riscv/riscv-opcodes) - 命令セット定義
+- [RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/) - Official specifications
+- [RISC-V International](https://riscv.org/) - RISC-V organization
+- [RISC-V Assembly Programmer's Manual](https://github.com/riscv-non-isa/riscv-asm-manual) - Assembly programming manual
+- [RISC-V Green Card](https://www.cl.cam.ac.uk/teaching/1617/ECAD+Arch/files/docs/RISCVGreenCardv8-20151013.pdf) - Instruction set reference
+- [RISC-V Opcodes](https://github.com/riscv/riscv-opcodes) - Instruction set definitions
 
-## 対応拡張
+## Supported Extensions
 
-- **RV32I/RV64I**: 基本整数命令セット
-- **M**: 乗算・除算拡張
-- **A**: アトミック操作拡張  
-- **F**: 単精度浮動小数点拡張
-- **D**: 倍精度浮動小数点拡張
-- **C**: 圧縮命令拡張
-- **Zicsr**: CSR 操作拡張
-- **Zifencei**: 命令フェンス拡張
+- **RV32I/RV64I**: Base integer instruction set
+- **M**: Multiplication and division extension
+- **A**: Atomic operations extension  
+- **F**: Single-precision floating-point extension
+- **D**: Double-precision floating-point extension
+- **C**: Compressed instruction extension
+- **Zicsr**: CSR operations extension
+- **Zifencei**: Instruction fence extension
 
-## 技術仕様
+## Technical Specifications
 
-- **フロントエンド**: HTML5, CSS3, JavaScript (ES6+)
-- **スタイリング**: Tailwind CSS
-- **対応ブラウザ**: Chrome, Firefox, Safari, Edge (モダンブラウザ)
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Styling**: Tailwind CSS
+- **Browser Support**: Chrome, Firefox, Safari, Edge (modern browsers)
 
-## 貢献
+## Contributing
 
-プルリクエストやイシューの投稿は歓迎します！新しい命令セットの追加や機能改善の提案をお待ちしています。
+Pull requests and issue submissions are welcome! We look forward to proposals for adding new instruction sets and feature improvements.
 
-## インストール
+## Installation
 
-`index.html`をブラウザで開くだけで使用可能です。
+Simply open `index.html` in a web browser to use the tool.
 
-## ライセンス
+## License
 
-このプロジェクトは MIT ライセンスの下で公開されています。詳細は `LICENSE` ファイルを参照してください。
+This project is released under the MIT License. See the `LICENSE` file for details.
