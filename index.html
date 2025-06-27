@@ -35,7 +35,7 @@
           </h1>
         </a>
         <p class="mt-3 text-lg text-gray-600">
-          Search & Decode RV32 (I, M, A, Zifencei, Zicsr) Instructions
+          Search & Decode RV32/RV64 (I, M, A, Zifencei, Zicsr) Instructions
         </p>
       </header>
 
@@ -45,7 +45,7 @@
         class="mb-12 bg-white p-6 rounded-2xl shadow-md border border-gray-200"
       >
         <h2 class="text-2xl font-bold mb-4 text-gray-800">
-          32-bit Instruction Decoder
+          32-bit Instruction Decoder (RV32/RV64)
         </h2>
         <div class="flex flex-col sm:flex-row items-center gap-4">
           <input
@@ -123,7 +123,7 @@
     </div>
 
     <script>
-      // --- RISC-V RV32IM/A/Zifencei/Zicsr Instruction Set Data ---
+      // --- RISC-V RV32/RV64 IM/A/Zifencei/Zicsr Instruction Set Data ---
       const instructions = [
         // RV32I Base Instruction Set
         {
@@ -446,6 +446,111 @@
           funct3: "000",
           description: "Memory ordering fence",
         },
+        // RV64I Base Instruction Set (additional to RV32I)
+        {
+          mnemonic: "LWU",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "110",
+          description: "Load Word Unsigned: rd = ZeroExtend(mem[rs1+offset])",
+        },
+        {
+          mnemonic: "LD",
+          format: "I",
+          type: "I",
+          opcode: "0000011",
+          funct3: "011",
+          description: "Load Doubleword: rd = mem[rs1+offset]",
+        },
+        {
+          mnemonic: "SD",
+          format: "S",
+          type: "I",
+          opcode: "0100011",
+          funct3: "011",
+          description: "Store Doubleword: mem[rs1+offset] = rs2",
+        },
+        {
+          mnemonic: "ADDIW",
+          format: "I",
+          type: "I",
+          opcode: "0011011",
+          funct3: "000",
+          description: "Add Immediate Word: rd = SignExtend((rs1 + imm)[31:0])",
+        },
+        {
+          mnemonic: "SLLIW",
+          format: "R",
+          type: "I",
+          opcode: "0011011",
+          funct3: "001",
+          funct7: "0000000",
+          description: "Shift Left Logical Immediate Word: rd = SignExtend((rs1 << shamt)[31:0])",
+        },
+        {
+          mnemonic: "SRLIW",
+          format: "R",
+          type: "I",
+          opcode: "0011011",
+          funct3: "101",
+          funct7: "0000000",
+          description: "Shift Right Logical Immediate Word: rd = SignExtend((rs1[31:0] >> shamt))",
+        },
+        {
+          mnemonic: "SRAIW",
+          format: "R",
+          type: "I",
+          opcode: "0011011",
+          funct3: "101",
+          funct7: "0100000",
+          description: "Shift Right Arithmetic Immediate Word: rd = SignExtend((rs1[31:0] >> shamt))",
+        },
+        {
+          mnemonic: "ADDW",
+          format: "R",
+          type: "I",
+          opcode: "0111011",
+          funct3: "000",
+          funct7: "0000000",
+          description: "Add Word: rd = SignExtend((rs1 + rs2)[31:0])",
+        },
+        {
+          mnemonic: "SUBW",
+          format: "R",
+          type: "I",
+          opcode: "0111011",
+          funct3: "000",
+          funct7: "0100000",
+          description: "Subtract Word: rd = SignExtend((rs1 - rs2)[31:0])",
+        },
+        {
+          mnemonic: "SLLW",
+          format: "R",
+          type: "I",
+          opcode: "0111011",
+          funct3: "001",
+          funct7: "0000000",
+          description: "Shift Left Logical Word: rd = SignExtend((rs1[31:0] << rs2[4:0]))",
+        },
+        {
+          mnemonic: "SRLW",
+          format: "R",
+          type: "I",
+          opcode: "0111011",
+          funct3: "101",
+          funct7: "0000000",
+          description: "Shift Right Logical Word: rd = SignExtend((rs1[31:0] >> rs2[4:0]))",
+        },
+        {
+          mnemonic: "SRAW",
+          format: "R",
+          type: "I",
+          opcode: "0111011",
+          funct3: "101",
+          funct7: "0100000",
+          description: "Shift Right Arithmetic Word: rd = SignExtend((rs1[31:0] >> rs2[4:0]))",
+        },
         {
           mnemonic: "ECALL",
           format: "I",
@@ -532,7 +637,7 @@
           opcode: "0110011",
           funct3: "000",
           funct7: "0000001",
-          description: "Multiply: rd = rs1 * rs2 (lower 32 bits)",
+          description: "Multiply: rd = rs1 * rs2 (lower bits)",
         },
         {
           mnemonic: "MULH",
@@ -541,7 +646,7 @@
           opcode: "0110011",
           funct3: "001",
           funct7: "0000001",
-          description: "Multiply High (signed): rd = (rs1*rs2)>>32",
+          description: "Multiply High (signed): rd = (rs1*rs2)>>XLEN",
         },
         {
           mnemonic: "MULHSU",
@@ -550,7 +655,7 @@
           opcode: "0110011",
           funct3: "010",
           funct7: "0000001",
-          description: "Multiply High (signed*unsigned): rd = (rs1*rs2)>>32",
+          description: "Multiply High (signed*unsigned): rd = (rs1*rs2)>>XLEN",
         },
         {
           mnemonic: "MULHU",
@@ -559,7 +664,7 @@
           opcode: "0110011",
           funct3: "011",
           funct7: "0000001",
-          description: "Multiply High (unsigned): rd = (rs1*rs2)>>32",
+          description: "Multiply High (unsigned): rd = (rs1*rs2)>>XLEN",
         },
         {
           mnemonic: "DIV",
@@ -596,6 +701,52 @@
           funct3: "111",
           funct7: "0000001",
           description: "Remainder (unsigned): rd = rs1 % rs2",
+        },
+        // RV64M Standard Extension (additional to RV32M)
+        {
+          mnemonic: "MULW",
+          format: "R",
+          type: "M",
+          opcode: "0111011",
+          funct3: "000",
+          funct7: "0000001",
+          description: "Multiply Word: rd = SignExtend((rs1 * rs2)[31:0])",
+        },
+        {
+          mnemonic: "DIVW",
+          format: "R",
+          type: "M",
+          opcode: "0111011",
+          funct3: "100",
+          funct7: "0000001",
+          description: "Divide Word (signed): rd = SignExtend((rs1[31:0] / rs2[31:0])[31:0])",
+        },
+        {
+          mnemonic: "DIVUW",
+          format: "R",
+          type: "M",
+          opcode: "0111011",
+          funct3: "101",
+          funct7: "0000001",
+          description: "Divide Word (unsigned): rd = SignExtend((rs1[31:0] / rs2[31:0])[31:0])",
+        },
+        {
+          mnemonic: "REMW",
+          format: "R",
+          type: "M",
+          opcode: "0111011",
+          funct3: "110",
+          funct7: "0000001",
+          description: "Remainder Word (signed): rd = SignExtend((rs1[31:0] % rs2[31:0])[31:0])",
+        },
+        {
+          mnemonic: "REMUW",
+          format: "R",
+          type: "M",
+          opcode: "0111011",
+          funct3: "111",
+          funct7: "0000001",
+          description: "Remainder Word (unsigned): rd = SignExtend((rs1[31:0] % rs2[31:0])[31:0])",
         },
         // RV32A Standard Extension
         {
@@ -701,6 +852,111 @@
           funct7: "1110000",
           description:
             "Atomic Max (unsigned): rd=mem[rs1]; mem[rs1]=maxu(mem[rs1],rs2)",
+        },
+        // RV64A Standard Extension (additional to RV32A)
+        {
+          mnemonic: "LR.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0001000",
+          description: "Load-Reserved Doubleword: rd = mem[rs1]; register reservation",
+        },
+        {
+          mnemonic: "SC.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0001100",
+          description:
+            "Store-Conditional Doubleword: if valid, mem[rs1]=rs2, rd=0; else rd=1",
+        },
+        {
+          mnemonic: "AMOSWAP.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0000100",
+          description: "Atomic Swap Doubleword: rd=mem[rs1]; mem[rs1]=rs2",
+        },
+        {
+          mnemonic: "AMOADD.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0000000",
+          description: "Atomic Add Doubleword: rd=mem[rs1]; mem[rs1]+=rs2",
+        },
+        {
+          mnemonic: "AMOXOR.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0010000",
+          description: "Atomic XOR Doubleword: rd=mem[rs1]; mem[rs1]^=rs2",
+        },
+        {
+          mnemonic: "AMOAND.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0110000",
+          description: "Atomic AND Doubleword: rd=mem[rs1]; mem[rs1]&=rs2",
+        },
+        {
+          mnemonic: "AMOOR.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "0100000",
+          description: "Atomic OR Doubleword: rd=mem[rs1]; mem[rs1]|=rs2",
+        },
+        {
+          mnemonic: "AMOMIN.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "1000000",
+          description:
+            "Atomic Min Doubleword (signed): rd=mem[rs1]; mem[rs1]=min(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMAX.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "1010000",
+          description:
+            "Atomic Max Doubleword (signed): rd=mem[rs1]; mem[rs1]=max(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMINU.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "1100000",
+          description:
+            "Atomic Min Doubleword (unsigned): rd=mem[rs1]; mem[rs1]=minu(mem[rs1],rs2)",
+        },
+        {
+          mnemonic: "AMOMAXU.D",
+          format: "R",
+          type: "A",
+          opcode: "0101111",
+          funct3: "011",
+          funct7: "1110000",
+          description:
+            "Atomic Max Doubleword (unsigned): rd=mem[rs1]; mem[rs1]=maxu(mem[rs1],rs2)",
         },
       ];
 
@@ -834,11 +1090,11 @@
               .padStart(7, "0");
             return i.funct7 === amo_funct7;
           }
-          if (i.funct7 && !["SLLI", "SRLI", "SRAI"].includes(i.mnemonic)) {
+          if (i.funct7 && !["SLLI", "SRLI", "SRAI", "SLLIW", "SRLIW", "SRAIW"].includes(i.mnemonic)) {
             if (i.funct7 !== funct7) return false;
           }
 
-          if (["SLLI", "SRLI", "SRAI"].includes(i.mnemonic)) {
+          if (["SLLI", "SRLI", "SRAI", "SLLIW", "SRLIW", "SRAIW"].includes(i.mnemonic)) {
             const shamt_funct7 = getBits(instVal, 25, 31)
               .toString(2)
               .padStart(7, "0");
@@ -864,7 +1120,7 @@
 
         switch (foundInst.format) {
           case "R":
-            if (["SLLI", "SRLI", "SRAI"].includes(foundInst.mnemonic)) {
+            if (["SLLI", "SRLI", "SRAI", "SLLIW", "SRLIW", "SRAIW"].includes(foundInst.mnemonic)) {
               const shamt = getBits(instVal, 20, 24);
               assembly += ` ${rd_str}, ${rs1_str}, ${shamt}`;
             } else {
